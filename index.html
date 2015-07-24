@@ -1,0 +1,103 @@
+<html>
+
+<body>
+    <canvas id="display" width="400" height="400">
+
+    </canvas>
+    <div id="vars">
+
+    </div>
+</body>
+<script type="text/javascript">
+    function pseudo_gaussian(variance, mean) {
+        var out = 0;
+
+        var size = 6;
+
+        for (var i = 0; i < size; i++) {
+            out += Math.random();
+        }
+        return (out - size / 2) / (size / 2) + mean;
+    }
+
+    function clear_vars() {
+        vars.innerHTML = "";
+    }
+    function add_var(name, value) {
+        vars.innerHTML += name + " " + value + "<br />";
+    }
+
+    var Point = function(x, y) {
+        this.x = x;
+        this.y = y;
+    }
+
+    function draw_angle_box(ctx, angle, radius, size) {
+        ctx.fillRect(Math.cos(angle)*radius-size/2,   
+                     Math.sin(angle)*radius-size/2,
+                     size, size);   
+    } 
+
+    var actual_angle = 0;
+    var angular_vel = 0.001;
+    var radius = 150;
+
+    var canvas = document.getElementById("display");
+    var context = canvas.getContext("2d");
+    var vars = document.getElementById("vars");
+
+
+    var last_estimate = 0;
+
+
+    var last_timestamp = null;
+
+    // Kalman variables
+
+    var process_noise = 0.1;
+    var measurement_noise = 3; 
+
+    var prediction = 0;
+
+    function step(timestamp) {
+        if (!last_timestamp) last_timestamp = timestamp;
+
+        var delta_t = timestamp - last_timestamp;
+
+
+        actual_angle += angular_vel * delta_t;
+
+        prediction = prediction + pseudo_gaussian(1, 0) * process_noise;
+        measurement = actual_angle + pseudo_gaussian(1, 0) * measurement_noise;
+
+        var kalman_gain = prediction / (prediction + measurement_noise);
+
+        angle_est = last_estimate + kalman_gain * (measurement - last_estimate);
+
+        prediction = (1 - kalman_gain) * prediction;
+
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        context.save();
+        context.translate(canvas.width / 2, canvas.height / 2);
+
+        //context.fillStyle = "red";
+        //draw_angle_box(context, actual_angle, radius, 10);
+
+        clear_vars();
+        add_var("Prediction", prediction);
+        add_var("Kalman Gain", kalman_gain);
+        add_var("Gauss", pseudo_gaussian(1, 0));
+
+        context.fillStyle = "blue";
+        draw_angle_box(context, angle_est, radius, 10);
+
+        context.restore();
+
+        last_timestamp = timestamp;
+        window.requestAnimationFrame(step);
+    }
+
+    window.requestAnimationFrame(step);
+
+</script>
+</html>
